@@ -26,7 +26,7 @@ from models import (init_db, seed_races, get_all_races, get_race_by_slug,
                     get_race_sections, create_purchase, get_purchase_by_code,
                     get_purchases_by_email, mark_report_ready, create_race_request,
                     get_race_content, get_premium_data, save_premium_data,
-                    get_purchase_for_race)
+                    get_purchase_for_race, save_race_content, create_or_update_race)
 from email_service import (send_access_code_email, send_order_notification)
 
 # ---------------------------------------------------------------------------
@@ -425,6 +425,70 @@ def get_my_premium(slug):
         })
     except (json.JSONDecodeError, TypeError):
         return jsonify({'status': 'building', 'unlocked': False})
+
+
+# ======================================================================
+# OPENCLAW CONTENT APIs
+# ======================================================================
+
+@app.route('/api/race-content/<slug>', methods=['POST'])
+def receive_race_content(slug):
+    """
+    Receive free race content from OpenClaw skill.
+    This populates the detailed course breakdown, weather, strategy tips,
+    essentials checklist, training targets, and finisher tips.
+    """
+    api_key = request.headers.get('X-API-Key', '')
+    if api_key != os.getenv('OPENCLAW_API_KEY', 'dev-key'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    success = save_race_content(slug, data)
+    if not success:
+        return jsonify({'error': 'Race not found', 'slug': slug}), 404
+
+    return jsonify({'success': True, 'slug': slug})
+
+
+@app.route('/api/race', methods=['POST'])
+def create_race():
+    """
+    Create a new race or update an existing one.
+    Allows OpenClaw to add races dynamically.
+    """
+    api_key = request.headers.get('X-API-Key', '')
+    if api_key != os.getenv('OPENCLAW_API_KEY', 'dev-key'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.get_json()
+    if not data or 'slug' not in data or 'name' not in data:
+        return jsonify({'error': 'slug and name required'}), 400
+
+    race_id = create_or_update_race(data)
+    return jsonify({'success': True, 'race_id': race_id, 'slug': data['slug']})
+
+
+@app.route('/api/races', methods=['GET'])
+def list_races_api():
+    """
+    List all races with their content status.
+    Useful for OpenClaw to know which races need content.
+    """
+    api_key = request.headers.get('X-API-Key', '')
+    if api_key != os.getenv('OPENCLAW_API_KEY', 'dev-key'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    races = get_all_races()
+    return jsonify([{
+        'slug': r['slug'],
+        'name': r['name'],
+        'distance': r['distance'],
+        'location': r['location'],
+        'has_content': bool(r['race_content_json']),
+    } for r in races])
 
 
 # ======================================================================

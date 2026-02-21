@@ -180,6 +180,111 @@ def get_race_content(race_id):
         return None
 
 
+def save_race_content(slug, content_json):
+    """
+    Save or update the race_content_json for a race by slug.
+    content_json should be a dict (will be serialized to JSON).
+    Returns True on success, False if race not found.
+    """
+    conn = get_db()
+    result = conn.execute(
+        'UPDATE races SET race_content_json = ? WHERE slug = ?',
+        (json.dumps(content_json), slug)
+    )
+    conn.commit()
+    updated = result.rowcount > 0
+    conn.close()
+    return updated
+
+
+def create_or_update_race(race_data):
+    """
+    Create a new race or update an existing one by slug.
+    race_data is a dict with keys matching the races table columns.
+    Required: slug, name, distance.
+    Optional: distance_miles, elevation_gain, elevation_gain_ft, location,
+              state, country, description, month, cutoff_time, difficulty,
+              price_cents, plan_price, elevation_profile, race_content_json,
+              training_location.
+    Returns the race id.
+    """
+    conn = get_db()
+    slug = race_data['slug']
+
+    existing = conn.execute('SELECT id FROM races WHERE slug = ?', (slug,)).fetchone()
+
+    # Columns that actually exist in the races table
+    RACE_COLUMNS = ['name', 'distance', 'distance_miles', 'elevation_gain',
+                    'elevation_gain_ft', 'location', 'state', 'country',
+                    'description', 'month', 'cutoff_time', 'difficulty',
+                    'training_location']
+
+    if existing:
+        # Update existing race
+        fields = []
+        values = []
+        for key in RACE_COLUMNS:
+            if key in race_data:
+                fields.append(f'{key} = ?')
+                values.append(race_data[key])
+
+        if 'race_content_json' in race_data:
+            fields.append('race_content_json = ?')
+            val = race_data['race_content_json']
+            values.append(json.dumps(val) if isinstance(val, dict) else val)
+
+        if 'elevation_profile_json' in race_data:
+            fields.append('elevation_profile_json = ?')
+            val = race_data['elevation_profile_json']
+            values.append(json.dumps(val) if isinstance(val, (list, dict)) else val)
+
+        if fields:
+            values.append(slug)
+            conn.execute(f'UPDATE races SET {", ".join(fields)} WHERE slug = ?', values)
+            conn.commit()
+
+        race_id = existing['id']
+    else:
+        # Insert new race
+        content_json = race_data.get('race_content_json')
+        if isinstance(content_json, dict):
+            content_json = json.dumps(content_json)
+
+        profile_json = race_data.get('elevation_profile_json')
+        if isinstance(profile_json, (list, dict)):
+            profile_json = json.dumps(profile_json)
+
+        conn.execute('''
+            INSERT INTO races (slug, name, distance, distance_miles, elevation_gain,
+                             elevation_gain_ft, location, state, country, description,
+                             month, cutoff_time, difficulty, elevation_profile_json,
+                             race_content_json, training_location)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            slug,
+            race_data.get('name', slug),
+            race_data.get('distance', '100 miles'),
+            race_data.get('distance_miles'),
+            race_data.get('elevation_gain'),
+            race_data.get('elevation_gain_ft'),
+            race_data.get('location'),
+            race_data.get('state'),
+            race_data.get('country', 'USA'),
+            race_data.get('description'),
+            race_data.get('month'),
+            race_data.get('cutoff_time'),
+            race_data.get('difficulty', 'Hard'),
+            profile_json,
+            content_json,
+            race_data.get('training_location'),
+        ))
+        conn.commit()
+        race_id = conn.execute('SELECT id FROM races WHERE slug = ?', (slug,)).fetchone()['id']
+
+    conn.close()
+    return race_id
+
+
 # ======================================================================
 # PURCHASE OPERATIONS
 # ======================================================================
