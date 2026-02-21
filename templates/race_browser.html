@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Browse Ultra Races — ARTLU.RUN{% endblock %}
+
+{% block content %}
+<section class="page-header">
+    <div class="container">
+        <h1>Ultra Races</h1>
+        <p>Free course info for every race. Get a personalized plan for {{ plan_price }}.</p>
+    </div>
+</section>
+
+<section class="section section-light">
+    <div class="container">
+        <!-- Filters -->
+        <div class="filter-bar">
+            <input type="text" id="race-search" placeholder="Search races..." class="form-input form-input-search">
+            <div class="filter-pills">
+                <button class="pill pill-active" data-filter="all">All</button>
+                <button class="pill" data-filter="100">100 Milers</button>
+                <button class="pill" data-filter="50">50 Milers</button>
+                <button class="pill" data-filter="usa">USA</button>
+                <button class="pill" data-filter="international">International</button>
+            </div>
+        </div>
+
+        <!-- Race Grid -->
+        <div class="race-grid" id="race-grid">
+            {% for race in races %}
+            <a href="/race/{{ race.slug }}" class="race-card"
+               data-distance="{{ race.distance_miles }}"
+               data-country="{{ race.country }}"
+               data-name="{{ race.name|lower }}">
+                <div class="race-card-header">
+                    <h3>{{ race.name }}</h3>
+                    <span class="race-difficulty race-difficulty-{{ race.difficulty|lower }}">{{ race.difficulty }}</span>
+                </div>
+                <div class="race-card-stats">
+                    <span>{{ race.distance }}</span>
+                    <span>{{ race.elevation_gain }} gain</span>
+                    <span>{{ race.month }}</span>
+                </div>
+                {% if race.elevation_profile_json %}
+                <div class="mini-elevation" data-profile="{{ race.elevation_profile_json }}"></div>
+                {% endif %}
+                <div class="race-card-meta">
+                    <span class="race-location">📍 {{ race.location }}</span>
+                    <span class="race-cutoff">⏱️ {{ race.cutoff_time }} cutoff</span>
+                </div>
+                <p class="race-card-desc">{{ race.description[:150] }}{% if race.description|length > 150 %}...{% endif %}</p>
+                {% if not race.gpx_available %}
+                <span class="race-badge race-badge-pending">GPX data coming soon</span>
+                {% endif %}
+                <span class="race-card-link">View Race Details →</span>
+            </a>
+            {% endfor %}
+        </div>
+
+        {% if not races %}
+        <div class="empty-state">
+            <p>No races configured yet. Check back soon!</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- Request CTA -->
+<section class="section section-white">
+    <div class="container container-narrow text-center">
+        <h2>Don't See Your Race?</h2>
+        <p class="mb-2">We're adding new races all the time. Let us know what you need.</p>
+        <form id="race-request-form" class="request-form">
+            <div class="form-row">
+                <input type="text" name="race_name" placeholder="Race name" required class="form-input">
+                <input type="email" name="email" placeholder="Your email (optional)" class="form-input">
+                <button type="submit" class="btn btn-primary">Request It</button>
+            </div>
+            <div id="request-message" class="form-message"></div>
+        </form>
+    </div>
+</section>
+{% endblock %}

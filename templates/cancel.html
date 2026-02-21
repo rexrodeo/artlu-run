@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Payment Cancelled — ARTLU.RUN{% endblock %}
+
+{% block content %}
+<section class="section section-light" style="min-height: 70vh; display: flex; align-items: center;">
+    <div class="container container-narrow text-center">
+        <div class="cancel-card">
+            <div class="cancel-icon">↩️</div>
+            <h1>Payment Cancelled</h1>
+            <p class="text-lg mb-2">No worries — nothing was charged. Your race plan is waiting whenever you're ready.</p>
+            <div class="mt-3">
+                <a href="/races" class="btn btn-primary">Back to Races</a>
+                <a href="/" class="btn btn-secondary">Home</a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

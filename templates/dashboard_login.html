@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}My Plans — ARTLU.RUN{% endblock %}
+
+{% block content %}
+<section class="section section-light" style="min-height: 70vh; display: flex; align-items: center;">
+    <div class="container container-xs text-center">
+        <h1>Access Your Race Plans</h1>
+        <p class="text-muted mb-3">Enter your email and access code from your purchase confirmation.</p>
+
+        <form method="POST" action="/dashboard/login" class="card-form">
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" required placeholder="you@email.com" class="form-input">
+            </div>
+            <div class="form-group">
+                <label for="access_code">Access Code</label>
+                <input type="text" id="access_code" name="access_code" required
+                       placeholder="e.g. ABCD1234" class="form-input" style="text-transform: uppercase;">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">View My Plans</button>
+        </form>
+
+        <div class="help-text mt-3">
+            <p><strong>Don't have an access code?</strong></p>
+            <p class="text-muted">Access codes are emailed after purchase. Check your spam folder, or <a href="/contact">contact us</a> for help.</p>
+            <p class="mt-2"><a href="/races">Browse races</a> to purchase a personalized plan.</p>
+        </div>
+    </div>
+</section>
+{% endblock %}

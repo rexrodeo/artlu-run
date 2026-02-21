@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ARTLU.RUN — Ultra Race Strategy{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}Personalized ultramarathon race plans with custom pacing, local training segments, and deep race insights. Get your edge.{% endblock %}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏔️</text></svg>">
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">
+                <span class="brand-icon">ARTLU</span><span class="brand-dot">.</span><span class="brand-run">RUN</span>
+            </a>
+            <div class="nav-links">
+                <a href="/races">Races</a>
+                <a href="/dashboard">My Plans</a>
+            </div>
+        </div>
+    </nav>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-messages">
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-brand">
+                <span class="footer-logo">ARTLU.RUN</span>
+                <p class="footer-tagline">Personalized ultra race strategy</p>
+            </div>
+            <div class="footer-links">
+                <a href="/races">Browse Races</a>
+                <a href="/about">About</a>
+                <a href="/contact">Contact</a>
+                <a href="/privacy">Privacy</a>
+            </div>
+            <div class="footer-copy">&copy; {{ current_year }} ARTLU.RUN</div>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

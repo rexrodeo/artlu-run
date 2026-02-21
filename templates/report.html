@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}{{ purchase.race_name }} Plan — ARTLU.RUN{% endblock %}
+
+{% block content %}
+<!-- Premium Report Header -->
+<section class="report-hero">
+    <div class="container">
+        <div class="report-hero-content">
+            <a href="/dashboard" class="back-link">← Back to My Plans</a>
+            <h1>{{ purchase.race_name }}</h1>
+            <div class="report-meta">
+                {% if purchase.goal_time %}<span>Goal: {{ purchase.goal_time }}</span>{% endif %}
+                {% if purchase.city %}<span>Training near: {{ purchase.city }}, {{ purchase.state }}</span>{% endif %}
+                <span>Generated {{ purchase.created_at }}</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section section-white">
+    <div class="container container-narrow">
+        {% if purchase.report_ready and purchase.report_content %}
+        <!-- PREMIUM CONTENT — No ads -->
+        <div class="report-content">
+            {{ purchase.report_content|safe }}
+        </div>
+
+        <!-- Gear Recommendations (referral link placeholders) -->
+        <div class="gear-section">
+            <h2>Recommended Gear</h2>
+            <p class="text-muted">Gear picks for {{ purchase.race_name }} based on course conditions and past finisher feedback.</p>
+            <div class="gear-grid">
+                <div class="gear-card">
+                    <div class="gear-category">Trail Shoes</div>
+                    <div class="gear-placeholder">
+                        <span>Gear recommendation coming soon</span>
+                        <!-- Referral link placeholder: data-referral="shoes" -->
+                    </div>
+                </div>
+                <div class="gear-card">
+                    <div class="gear-category">Hydration</div>
+                    <div class="gear-placeholder">
+                        <span>Gear recommendation coming soon</span>
+                        <!-- Referral link placeholder: data-referral="hydration" -->
+                    </div>
+                </div>
+                <div class="gear-card">
+                    <div class="gear-category">Nutrition</div>
+                    <div class="gear-placeholder">
+                        <span>Gear recommendation coming soon</span>
+                        <!-- Referral link placeholder: data-referral="nutrition" -->
+                    </div>
+                </div>
+                <div class="gear-card">
+                    <div class="gear-category">Lighting</div>
+                    <div class="gear-placeholder">
+                        <span>Gear recommendation coming soon</span>
+                        <!-- Referral link placeholder: data-referral="lighting" -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% elif purchase.report_ready %}
+        <div class="empty-state">
+            <h3>Plan content is being finalized</h3>
+            <p>Your plan has been marked as ready but the content is still being loaded. Check back shortly.</p>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3>Your plan is being built</h3>
+            <p>We're creating your personalized {{ purchase.race_name }} strategy. You'll get an email when it's ready — usually within 24–48 hours.</p>
+            <a href="/dashboard" class="btn btn-secondary mt-1">Back to Dashboard</a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

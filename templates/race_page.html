@@ -1,0 +1,648 @@
+{% extends "base.html" %}
+{% block title %}{{ race.name }} — ARTLU.RUN{% endblock %}
+{% block meta_description %}Course overview, strategy tips, and personalized training plans for {{ race.name }}. {{ race.distance }}, {{ race.elevation_gain }} gain, {{ race.location }}.{% endblock %}
+
+{% block head %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.body.dataset.raceSlug = '{{ race.slug }}';
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+<!-- Purchase Celebration Banner -->
+{% if request.args.get('purchased') %}
+<div class="purchase-celebration" id="purchase-celebration">
+    <div class="container">
+        <div class="celebration-content">
+            <span class="celebration-icon">🎉</span>
+            <div>
+                <strong>You're in! Your {{ race.name }} plan is being built right now.</strong>
+                <span>Watch the locked sections below — they'll come alive as your personalized data arrives.</span>
+            </div>
+            {% if request.args.get('code') %}
+            <div class="celebration-code">Code: <strong>{{ request.args.get('code') }}</strong></div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Race Header -->
+<section class="race-hero" id="top">
+    <div class="container">
+        <div class="race-hero-content">
+            <div class="race-hero-text">
+                <h1>{{ race.name }}</h1>
+                <div class="race-hero-stats">
+                    <div class="stat-pill"><strong>{{ race.distance }}</strong></div>
+                    <div class="stat-pill"><strong>{{ race.elevation_gain }}</strong> gain</div>
+                    <div class="stat-pill"><strong>{{ race.cutoff_time }}</strong> cutoff</div>
+                    <div class="stat-pill"><strong>{{ race.month }}</strong></div>
+                </div>
+                <p class="race-hero-location">📍 {{ race.location }}</p>
+                <p class="race-hero-desc">{{ race.description }}</p>
+                <span class="race-difficulty race-difficulty-{{ race.difficulty|lower }}">{{ race.difficulty }}</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Elevation Profile -->
+{% if elevation_data != '[]' %}
+<section class="section section-white elevation-section">
+    <div class="container">
+        <h2 class="section-title">Elevation Profile</h2>
+        <div class="elevation-chart-container">
+            <canvas id="elevation-chart" data-profile="{{ elevation_data }}"></canvas>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Rich Race Content (NEW) -->
+{% if race_content %}
+
+<!-- Callout Box -->
+{% if race_content.callout %}
+<section class="section section-light">
+    <div class="container container-narrow">
+        <div class="race-callout">
+            <div class="callout-icon">{{ race_content.callout.icon }}</div>
+            <div class="callout-content">
+                <h3>{{ race_content.callout.title }}</h3>
+                <p>{{ race_content.callout.text }}</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Race Day Weather -->
+{% if race_content.weather %}
+<section class="section section-white">
+    <div class="container container-narrow">
+        <h2 class="section-title">Race Day Weather</h2>
+        <div class="weather-grid">
+            {% for weather in race_content.weather %}
+            <div class="weather-card">
+                <div class="weather-label">{{ weather.label }}</div>
+                <div class="weather-value">{{ weather.value }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Course Segments (NEW STYLE) -->
+{% if race_content.segments %}
+<section class="section section-light">
+    <div class="container container-narrow">
+        <h2 class="section-title">Detailed Course Breakdown</h2>
+        <p class="section-subtitle">Everything below is free. Scroll to see premium content locked for members.</p>
+
+        <div class="course-segments-new">
+            {% for segment in race_content.segments %}
+            <div class="segment-detail {% if segment.is_crux %}segment-crux{% endif %}">
+                <!-- Segment Header -->
+                <div class="segment-header">
+                    <div class="segment-number">{{ segment.number }}</div>
+                    <div class="segment-title-area">
+                        <h3 class="segment-name">{{ segment.name }}</h3>
+                        <div class="segment-location">Miles {{ segment.miles_start|int }}–{{ segment.miles_end|int }}</div>
+                    </div>
+                </div>
+
+                <!-- Segment Tags -->
+                {% if segment.tags %}
+                <div class="segment-tags">
+                    {% for tag in segment.tags %}
+                    <span class="segment-tag {% if segment.is_crux %}segment-tag-crux{% endif %}">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Description -->
+                <div class="segment-description">
+                    <p>{{ segment.description }}</p>
+                </div>
+
+                <!-- Aid Stations -->
+                {% if segment.aid_stations %}
+                <div class="aid-station-bar">
+                    <strong>🚩 Aid Stations:</strong> {{ segment.aid_stations }}
+                </div>
+                {% endif %}
+
+                <!-- Strategy Tips -->
+                {% if segment.strategy %}
+                <div class="strategy-section">
+                    <h4>💡 Strategy Tips</h4>
+                    <ul class="strategy-list">
+                        {% for tip in segment.strategy %}
+                        <li>{{ tip }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+                <!-- Premium Section: Training Segments -->
+                {% if segment.premium_preview and segment.premium_preview.training_segments %}
+                <div class="premium-teaser" data-segment="{{ segment.number }}" data-type="training">
+                    <div class="premium-blur">
+                        <h4>📍 Training Segments Near Your City</h4>
+                        <div class="training-segments-list">
+                            {% for ts in segment.premium_preview.training_segments %}
+                            <div class="training-segment-card">
+                                <div class="training-match">
+                                    <span class="match-badge">{{ ts.match }}%</span>
+                                </div>
+                                <div class="training-info">
+                                    <strong>{{ ts.name }}</strong>
+                                    <span class="training-details">{{ ts.details }}</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% if purchase and not premium_data %}
+                    <!-- BUILDING STATE -->
+                    <div class="premium-overlay premium-building-overlay">
+                        <div class="premium-lock">
+                            <span class="building-spinner-small"></span>
+                            <div class="premium-text">
+                                <strong>Finding Training Matches</strong>
+                                <span>Searching Strava segments near your city...</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% elif not purchase %}
+                    <!-- LOCKED STATE -->
+                    <div class="premium-overlay">
+                        <div class="premium-lock">
+                            <span class="premium-lock-icon">🔒</span>
+                            <div class="premium-text">
+                                <strong>Training Segments</strong>
+                                <span>Personalized to your location</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Premium Section: Timing & Gear -->
+                {% if segment.premium_preview %}
+                <div class="premium-teaser" data-segment="{{ segment.number }}" data-type="data">
+                    <div class="premium-blur">
+                        <div class="premium-grid-2">
+                            <div class="premium-item">
+                                <h5>⏱️ Target Timing</h5>
+                                <p>{{ segment.premium_preview.arrival_time }}</p>
+                            </div>
+                            <div class="premium-item">
+                                <h5>👕 Gear for This Section</h5>
+                                <p>{{ segment.premium_preview.gear }}</p>
+                            </div>
+                            <div class="premium-item">
+                                <h5>🥗 Nutrition Targets</h5>
+                                <p>{{ segment.premium_preview.nutrition }}</p>
+                            </div>
+                            <div class="premium-item">
+                                <h5>📊 Pacing Data</h5>
+                                <p>Custom pacing table based on goal time</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% if purchase and not premium_data %}
+                    <!-- BUILDING STATE -->
+                    <div class="premium-overlay premium-building-overlay">
+                        <div class="premium-lock">
+                            <span class="building-spinner-small"></span>
+                            <div class="premium-text">
+                                <strong>Crunching Your Numbers</strong>
+                                <span>Calculating pacing, gear, nutrition...</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% elif not purchase %}
+                    <!-- LOCKED STATE -->
+                    <div class="premium-overlay">
+                        <div class="premium-lock">
+                            <span class="premium-lock-icon">🔒</span>
+                            <div class="premium-text">
+                                <strong>Personalized Data</strong>
+                                <span>Segment timing, gear, nutrition</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Race Essentials Checklist -->
+{% if race_content.race_essentials %}
+<section class="section section-white">
+    <div class="container container-narrow">
+        <h2 class="section-title">Race Day Essentials</h2>
+        <div class="essentials-list">
+            {% for item in race_content.race_essentials %}
+            <div class="essentials-item">
+                <span class="essentials-check">✓</span>
+                <span>{{ item }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Weekly Training Targets -->
+{% if race_content.weekly_targets %}
+<section class="section section-light">
+    <div class="container container-narrow">
+        <h2 class="section-title">Weekly Training Targets (Peak Phase)</h2>
+        <div class="targets-grid">
+            <div class="target-card">
+                <div class="target-label">📏 Volume</div>
+                <div class="target-value">{{ race_content.weekly_targets.volume }}</div>
+            </div>
+            <div class="target-card">
+                <div class="target-label">⬆️ Elevation</div>
+                <div class="target-value">{{ race_content.weekly_targets.vertical }}</div>
+            </div>
+        </div>
+        {% if race_content.weekly_targets.components %}
+        <div class="target-details">
+            <h4>Key Components</h4>
+            <ul class="target-items">
+                {% for item in race_content.weekly_targets.components %}
+                <li>{{ item }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endif %}
+
+<!-- Finisher Tips -->
+{% if race_content.finisher_tips %}
+<section class="section section-white">
+    <div class="container container-narrow">
+        <h2 class="section-title">Keys to the Finish</h2>
+        <div class="tips-list">
+            {% for tip in race_content.finisher_tips %}
+            <div class="tips-item">
+                <span class="tips-number">{{ loop.index }}</span>
+                <span class="tips-text">{{ tip }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Fallback: Old Section-Based Display -->
+{% else %}
+
+<!-- Course Sections (FREE CONTENT) -->
+{% if sections %}
+<section class="section section-light">
+    <div class="container container-narrow">
+        <h2 class="section-title">Course Overview</h2>
+        <p class="section-subtitle">Free course breakdown — see what you're getting into.</p>
+
+        <!-- Ad Slot: Top of free content -->
+        <div class="ad-slot" data-slot="race-top">
+            <div class="ad-placeholder">
+                <span>Partner Content</span>
+            </div>
+        </div>
+
+        <div class="course-sections">
+            {% for section in sections %}
+            <div class="section-card {% if section.is_crux %}section-card-crux{% endif %}">
+                <div class="section-card-header">
+                    <span class="section-icon">{{ section.icon }}</span>
+                    <div>
+                        <h3>{{ section.name }}</h3>
+                        <span class="section-miles">Miles {{ section.miles_start|int }}–{{ section.miles_end|int }} · {{ section.elevation_gain }}</span>
+                    </div>
+                    {% if section.is_crux %}
+                    <span class="crux-badge">Key Section</span>
+                    {% endif %}
+                </div>
+                <p>{{ section.description }}</p>
+                {% if section.strategy_tip %}
+                <div class="strategy-tip">
+                    <strong>💡 Strategy:</strong> {{ section.strategy_tip }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Ad Slot: Between sections and CTA -->
+        <div class="ad-slot" data-slot="race-mid">
+            <div class="ad-placeholder">
+                <span>Gear & Nutrition Sponsors</span>
+            </div>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+{% endif %}
+
+<!-- Training Teaser + Purchase CTA -->
+{% if not purchase %}
+<section class="section section-dark" id="purchase-cta">
+    <div class="container container-narrow text-center">
+        <h2>Get Your Personalized {{ race.name }} Plan</h2>
+        <p class="mb-2">Everything above is free. The personalized plan takes it further:</p>
+        <div class="premium-features">
+            <div class="premium-feature">
+                <span>📍</span>
+                <strong>Strava segments near YOUR city</strong> matched to each race section
+            </div>
+            <div class="premium-feature">
+                <span>📊</span>
+                <strong>Custom pacing table</strong> based on your goal time and the course profile
+            </div>
+            <div class="premium-feature">
+                <span>🎯</span>
+                <strong>Race-day playbook</strong> — nutrition timing, aid station plan, gear checklist
+            </div>
+            <div class="premium-feature">
+                <span>🏋️</span>
+                <strong>Training plan</strong> with weekly structure and key workout recommendations
+            </div>
+        </div>
+        <a href="/race/{{ race.slug }}/purchase" class="btn btn-primary btn-lg mt-2">
+            Get My {{ race.name }} Plan — {{ plan_price }}
+        </a>
+    </div>
+</section>
+{% elif purchase and not premium_data %}
+<section class="section section-dark" id="building-status">
+    <div class="container container-narrow text-center">
+        <div class="building-banner">
+            <div class="building-icon-wrap">
+                <span class="building-spinner"></span>
+            </div>
+            <h2>Building Your {{ race.name }} Plan</h2>
+            <p>Our AI research engine is analyzing the course, matching training segments near your city, and building your personalized strategy. This typically takes 2–5 minutes.</p>
+            <div class="building-progress">
+                <div class="building-bar"><div class="building-bar-fill"></div></div>
+                <span class="building-status-text">Analyzing course segments...</span>
+            </div>
+        </div>
+    </div>
+</section>
+{% else %}
+<section class="section section-dark">
+    <div class="container container-narrow text-center">
+        <h2>Your {{ race.name }} Plan is Ready</h2>
+        <p>Premium content is unlocked throughout this page. Scroll up to see your personalized training segments, timing, gear, and nutrition data.</p>
+        <a href="#top" class="btn btn-outline-light mt-1">Scroll to Top</a>
+    </div>
+</section>
+{% endif %}
+
+<!-- Ad Slot: Bottom of race page -->
+<section class="section section-white">
+    <div class="container">
+        <div class="ad-slot ad-slot-wide" data-slot="race-bottom">
+            <div class="ad-placeholder">
+                <span>Running Gear Recommendations</span>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Render elevation profile chart
+(function() {
+    const canvas = document.getElementById('elevation-chart');
+    if (!canvas) return;
+
+    const data = JSON.parse(canvas.dataset.profile || '[]');
+    if (!data.length) return;
+
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.parentElement.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = 260 * dpr;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = '260px';
+    ctx.scale(dpr, dpr);
+
+    const w = rect.width;
+    const h = 260;
+    const pad = { top: 20, right: 20, bottom: 40, left: 60 };
+    const plotW = w - pad.left - pad.right;
+    const plotH = h - pad.top - pad.bottom;
+
+    const minEl = Math.min(...data);
+    const maxEl = Math.max(...data);
+    const range = maxEl - minEl || 1;
+
+    // Draw gradient fill
+    const gradient = ctx.createLinearGradient(0, pad.top, 0, h - pad.bottom);
+    gradient.addColorStop(0, 'rgba(231, 76, 60, 0.3)');
+    gradient.addColorStop(1, 'rgba(231, 76, 60, 0.02)');
+
+    ctx.beginPath();
+    ctx.moveTo(pad.left, h - pad.bottom);
+    for (let i = 0; i < data.length; i++) {
+        const x = pad.left + (i / (data.length - 1)) * plotW;
+        const y = pad.top + plotH - ((data[i] - minEl) / range) * plotH;
+        ctx.lineTo(x, y);
+    }
+    ctx.lineTo(pad.left + plotW, h - pad.bottom);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // Draw line
+    ctx.beginPath();
+    for (let i = 0; i < data.length; i++) {
+        const x = pad.left + (i / (data.length - 1)) * plotW;
+        const y = pad.top + plotH - ((data[i] - minEl) / range) * plotH;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = '#e74c3c';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // Y-axis labels
+    ctx.fillStyle = '#999';
+    ctx.font = '11px -apple-system, sans-serif';
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i++) {
+        const val = minEl + (range * i / 4);
+        const y = pad.top + plotH - (i / 4) * plotH;
+        ctx.fillText(Math.round(val).toLocaleString() + ' ft', pad.left - 8, y + 4);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, y);
+        ctx.lineTo(pad.left + plotW, y);
+        ctx.strokeStyle = '#eee';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+
+    // X-axis labels
+    ctx.textAlign = 'center';
+    const totalMiles = {{ race.distance_miles or 100 }};
+    for (let i = 0; i <= 4; i++) {
+        const x = pad.left + (i / 4) * plotW;
+        ctx.fillText('Mile ' + Math.round(totalMiles * i / 4), x, h - pad.bottom + 20);
+    }
+})();
+
+// ================================================================
+// PREMIUM DATA: Live polling + dramatic reveal
+// ================================================================
+(function() {
+    const raceSlug = '{{ race.slug }}';
+    const userEmail = '{{ session.get("user_email", "") }}';
+    const justPurchased = {{ 'true' if request.args.get('purchased') else 'false' }};
+    let pollInterval = null;
+    let pollCount = 0;
+    const MAX_POLLS = 120; // 10 minutes at 5s intervals
+
+    const statusMessages = [
+        'Analyzing course segments...',
+        'Mapping elevation profiles...',
+        'Searching local training segments...',
+        'Matching Strava segments to course...',
+        'Calculating target pacing...',
+        'Building gear recommendations...',
+        'Generating nutrition targets...',
+        'Assembling your personalized plan...',
+        'Almost there...',
+    ];
+
+    if (!userEmail) return;
+
+    // Initial check
+    checkPremiumStatus();
+
+    function checkPremiumStatus() {
+        fetch('/api/my-premium/' + raceSlug)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.status === 'ready' && data.data) {
+                    // Stop polling
+                    if (pollInterval) clearInterval(pollInterval);
+                    revealPremiumContent(data.data);
+                } else if (data.status === 'building') {
+                    // Start polling if not already
+                    if (!pollInterval) {
+                        startPolling();
+                    }
+                    updateBuildingProgress();
+                }
+            })
+            .catch(function() {});
+    }
+
+    function startPolling() {
+        pollInterval = setInterval(function() {
+            pollCount++;
+            if (pollCount >= MAX_POLLS) {
+                clearInterval(pollInterval);
+                return;
+            }
+            checkPremiumStatus();
+        }, 5000);
+    }
+
+    function updateBuildingProgress() {
+        var statusText = document.querySelector('.building-status-text');
+        if (statusText) {
+            var idx = Math.min(Math.floor(pollCount / 3), statusMessages.length - 1);
+            statusText.textContent = statusMessages[idx];
+        }
+        var barFill = document.querySelector('.building-bar-fill');
+        if (barFill) {
+            var pct = Math.min(10 + pollCount * 3, 92);
+            barFill.style.width = pct + '%';
+        }
+    }
+
+    function revealPremiumContent(premiumData) {
+        // Complete the progress bar
+        var barFill = document.querySelector('.building-bar-fill');
+        if (barFill) {
+            barFill.style.width = '100%';
+            barFill.style.background = 'linear-gradient(90deg, #00b894, #00d4ff)';
+        }
+        var statusText = document.querySelector('.building-status-text');
+        if (statusText) {
+            statusText.textContent = 'Your plan is ready!';
+            statusText.style.color = '#00d4ff';
+        }
+
+        // Update the building banner
+        var buildingStatus = document.getElementById('building-status');
+        if (buildingStatus) {
+            var h2 = buildingStatus.querySelector('h2');
+            if (h2) h2.textContent = 'Your Plan is Ready!';
+            var p = buildingStatus.querySelector('p');
+            if (p) p.textContent = 'Scroll up to see your personalized data unlocked throughout the page.';
+        }
+
+        // Cascade reveal: unlock each premium teaser with staggered animation
+        var teasers = document.querySelectorAll('.premium-teaser');
+        teasers.forEach(function(teaser, i) {
+            setTimeout(function() {
+                // Add reveal animation class
+                teaser.classList.add('premium-revealing');
+
+                // After a moment, complete the reveal
+                setTimeout(function() {
+                    teaser.classList.remove('premium-revealing');
+                    teaser.classList.add('premium-unlocked');
+
+                    var overlay = teaser.querySelector('.premium-overlay');
+                    if (overlay) {
+                        overlay.style.transition = 'opacity 0.6s ease';
+                        overlay.style.opacity = '0';
+                        setTimeout(function() { overlay.style.display = 'none'; }, 600);
+                    }
+
+                    var blur = teaser.querySelector('.premium-blur');
+                    if (blur) {
+                        blur.style.transition = 'filter 0.8s ease, opacity 0.6s ease';
+                        blur.style.filter = 'none';
+                        blur.style.opacity = '1';
+                        blur.style.pointerEvents = 'auto';
+                    }
+                }, 400);
+            }, i * 300); // 300ms stagger per teaser
+        });
+
+        // Scroll to first revealed teaser if just purchased
+        if (justPurchased && teasers.length > 0) {
+            setTimeout(function() {
+                teasers[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 1500);
+        }
+    }
+})();
+</script>
+{% endblock %}

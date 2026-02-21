@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Not Found — ARTLU.RUN{% endblock %}
+
+{% block content %}
+<section class="section section-light" style="min-height: 60vh; display: flex; align-items: center;">
+    <div class="container text-center">
+        <h1 style="font-size: 4rem; color: #ccc;">404</h1>
+        <p class="text-lg mb-2">{{ message or "This page doesn't exist." }}</p>
+        <a href="/" class="btn btn-primary">Back to Home</a>
+    </div>
+</section>
+{% endblock %}

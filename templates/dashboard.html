@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}My Race Plans — ARTLU.RUN{% endblock %}
+
+{% block content %}
+<section class="page-header page-header-compact">
+    <div class="container">
+        <div class="dashboard-header">
+            <div>
+                <h1>My Race Plans</h1>
+                <p>{{ user_email }}</p>
+            </div>
+            <a href="/dashboard/logout" class="btn btn-outline-light btn-sm">Log Out</a>
+        </div>
+    </div>
+</section>
+
+<section class="section section-light">
+    <div class="container">
+        {% if purchases %}
+        <div class="dashboard-grid">
+            {% for p in purchases %}
+            <div class="dashboard-card">
+                <div class="dashboard-card-header">
+                    <h3>{{ p.race_name }}</h3>
+                    {% if p.report_ready %}
+                    <span class="status-badge status-ready">Ready</span>
+                    {% else %}
+                    <span class="status-badge status-pending">Building...</span>
+                    {% endif %}
+                </div>
+                <div class="dashboard-card-meta">
+                    <span>Purchased {{ p.created_at }}</span>
+                    {% if p.goal_time %}<span>Goal: {{ p.goal_time }}</span>{% endif %}
+                    {% if p.city %}<span>Training: {{ p.city }}, {{ p.state }}</span>{% endif %}
+                </div>
+                {% if p.report_ready %}
+                <a href="/dashboard/report/{{ p.id }}" class="btn btn-primary btn-sm mt-1">View My Plan</a>
+                {% else %}
+                <p class="text-muted text-sm mt-1">Your personalized plan is being built. You'll get an email when it's ready (usually 24–48 hours).</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <h3>No plans yet</h3>
+            <p>You haven't purchased any race plans with this email address.</p>
+            <a href="/races" class="btn btn-primary mt-1">Browse Races</a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

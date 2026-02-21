@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- HERO -->
+<section class="hero">
+    <div class="hero-container">
+        <p class="hero-eyebrow">Ultramarathon Race Strategy</p>
+        <h1 class="hero-title">
+            Know the course.<br>
+            Train <span class="highlight">smarter</span>.<br>
+            Finish strong.
+        </h1>
+        <p class="hero-subtitle">
+            Personalized race plans with custom pacing, Strava training segments
+            near your city, and deep course insights for the world's toughest ultras.
+        </p>
+        <div class="hero-cta">
+            <a href="/races" class="btn btn-primary btn-lg">Browse Races</a>
+            <a href="#how-it-works" class="btn btn-outline-light btn-lg">How It Works</a>
+        </div>
+    </div>
+</section>
+
+<!-- VALUE PROPS -->
+<section class="section section-light" id="how-it-works">
+    <div class="container">
+        <h2 class="section-title">What You Get</h2>
+        <p class="section-subtitle">Every race plan is built specifically for you, your race, and your training location.</p>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Personalized Pacing</h3>
+                <p>Mile-by-mile pacing strategy calibrated to your goal time, the course profile, and typical race-day conditions.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📍</div>
+                <h3>Local Training Segments</h3>
+                <p>Strava segments near your city that match each section of the race — same grade, same distance, same effort.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🏔️</div>
+                <h3>Deep Race Insights</h3>
+                <p>Course breakdowns, aid station strategy, gear lists, nutrition timing, and lessons from past finishers.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>Race-Day Playbook</h3>
+                <p>A concrete plan for race morning through the finish line — what to eat, when to push, when to hold back.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- SAMPLE PREVIEW -->
+<section class="section section-white">
+    <div class="container container-narrow">
+        <h2 class="section-title">See What's Inside</h2>
+        <p class="section-subtitle">Here's a preview from a Leadville Trail 100 plan for a Denver-based runner.</p>
+
+        <div class="preview-card">
+            <div class="preview-header">
+                <span class="preview-badge">Sample Section</span>
+                <h3>🏔️ Hope Pass — Miles 40–50</h3>
+                <p class="preview-meta">3,000 ft gain to 12,600 ft · Race-defining climb · Highest DNF rate</p>
+            </div>
+            <div class="preview-body">
+                <div class="preview-segment">
+                    <h4>Training Matches Near Denver</h4>
+                    <div class="segment-match">
+                        <span class="match-score">95%</span>
+                        <div class="match-info">
+                            <strong>Mount Evans Road</strong>
+                            <span>Similar altitude & sustained grade</span>
+                        </div>
+                    </div>
+                    <div class="segment-match">
+                        <span class="match-score">90%</span>
+                        <div class="match-info">
+                            <strong>Barr Trail to Barr Camp</strong>
+                            <span>Long climb, good altitude prep</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="preview-tip">
+                    <strong>Strategy:</strong> Practice power hiking at target HR zones. Start this climb conservatively — you can make time on the descent.
+                </div>
+            </div>
+        </div>
+
+        <div class="preview-includes">
+            <p>Full plans include 5–7 course sections with training matches, plus:</p>
+            <div class="includes-grid">
+                <span>Race-day pacing table</span>
+                <span>Gear & nutrition checklist</span>
+                <span>Weather preparation</span>
+                <span>Common mistakes to avoid</span>
+                <span>Aid station strategy</span>
+                <span>Mental game tactics</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FEATURED RACES -->
+<section class="section section-light">
+    <div class="container">
+        <h2 class="section-title">Popular Races</h2>
+        <p class="section-subtitle">Browse free race info, or get a personalized plan for {{ plan_price }}.</p>
+        <div class="race-grid">
+            {% for race in featured_races %}
+            <a href="/race/{{ race.slug }}" class="race-card">
+                <div class="race-card-header">
+                    <h3>{{ race.name }}</h3>
+                    <span class="race-difficulty race-difficulty-{{ race.difficulty|lower }}">{{ race.difficulty }}</span>
+                </div>
+                <div class="race-card-stats">
+                    <span>{{ race.distance }}</span>
+                    <span>{{ race.elevation_gain }} gain</span>
+                    <span>{{ race.location }}</span>
+                </div>
+                {% if race.elevation_profile_json %}
+                <div class="mini-elevation" data-profile="{{ race.elevation_profile_json }}"></div>
+                {% endif %}
+                <p class="race-card-desc">{{ race.description[:120] }}{% if race.description|length > 120 %}...{% endif %}</p>
+                <span class="race-card-link">View Race Details →</span>
+            </a>
+            {% endfor %}
+        </div>
+        <div class="text-center mt-3">
+            <a href="/races" class="btn btn-secondary">Browse All Races</a>
+        </div>
+    </div>
+</section>
+
+<!-- PRICING CTA -->
+<section class="section section-dark">
+    <div class="container container-narrow text-center">
+        <h2>Ready to Train With a Plan?</h2>
+        <p class="mb-3">Stop guessing. Get a race strategy built for your specific course and training location.</p>
+        <div class="pricing-card">
+            <div class="pricing-amount">{{ plan_price }}</div>
+            <div class="pricing-label">per race plan</div>
+            <ul class="pricing-features">
+                <li>Complete course breakdown with pacing</li>
+                <li>Local Strava training segments</li>
+                <li>Personalized race-day strategy</li>
+                <li>Gear & nutrition guide</li>
+                <li>Ready in 24–48 hours</li>
+            </ul>
+            <a href="/races" class="btn btn-primary btn-lg">Choose Your Race</a>
+        </div>
+    </div>
+</section>
+
+<!-- REQUEST A RACE -->
+<section class="section section-white">
+    <div class="container container-narrow text-center">
+        <h2>Don't See Your Race?</h2>
+        <p class="mb-2">We're adding new races all the time. Tell us what you're training for.</p>
+        <form id="race-request-form" class="request-form">
+            <div class="form-row">
+                <input type="text" name="race_name" placeholder="Race name" required class="form-input">
+                <input type="email" name="email" placeholder="Your email (optional)" class="form-input">
+                <button type="submit" class="btn btn-primary">Request Race</button>
+            </div>
+            <div id="request-message" class="form-message"></div>
+        </form>
+    </div>
+</section>
+{% endblock %}
