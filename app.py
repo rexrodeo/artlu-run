@@ -26,7 +26,8 @@ from models import (init_db, seed_races, get_all_races, get_race_by_slug,
                     get_race_sections, create_purchase, get_purchase_by_code,
                     get_purchases_by_email, mark_report_ready, create_race_request,
                     get_race_content, get_premium_data, save_premium_data,
-                    get_purchase_for_race, save_race_content, create_or_update_race)
+                    get_purchase_for_race, save_race_content, create_or_update_race,
+                    save_gpx_data)
 from email_service import (send_access_code_email, send_order_notification)
 
 # ---------------------------------------------------------------------------
@@ -451,6 +452,36 @@ def receive_race_content(slug):
         return jsonify({'error': 'Race not found', 'slug': slug}), 404
 
     return jsonify({'success': True, 'slug': slug})
+
+
+@app.route('/api/race-gpx/<slug>', methods=['POST'])
+def receive_race_gpx(slug):
+    """
+    Receive GPX data for a race. Parses GPX to auto-generate
+    elevation profile, distance, and elevation gain stats.
+    Accepts either raw GPX XML in body or JSON with a 'gpx' field.
+    """
+    api_key = request.headers.get('X-API-Key', '')
+    if api_key != os.getenv('OPENCLAW_API_KEY', 'dev-key'):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    # Accept GPX as raw XML or as JSON {"gpx": "<xml>..."}
+    content_type = request.content_type or ''
+    if 'application/json' in content_type:
+        data = request.get_json()
+        if not data or 'gpx' not in data:
+            return jsonify({'error': 'JSON body must include "gpx" field with GPX XML'}), 400
+        gpx_xml = data['gpx']
+    else:
+        gpx_xml = request.get_data(as_text=True)
+        if not gpx_xml:
+            return jsonify({'error': 'No GPX data provided'}), 400
+
+    result = save_gpx_data(slug, gpx_xml)
+    if result is None:
+        return jsonify({'error': 'Race not found or GPX has no elevation data', 'slug': slug}), 404
+
+    return jsonify({'success': True, 'slug': slug, **result})
 
 
 @app.route('/api/race', methods=['POST'])

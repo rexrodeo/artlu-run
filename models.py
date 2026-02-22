@@ -9,6 +9,7 @@ import sqlite3
 import secrets
 import os
 import json
+import math
 from datetime import datetime
 
 DB_PATH = os.getenv('DATABASE_PATH', 'artlu.db')
@@ -132,6 +133,11 @@ def init_db():
     except sqlite3.OperationalError:
         pass  # Column already exists
 
+    try:
+        cursor.execute("ALTER TABLE races ADD COLUMN gpx_data TEXT")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
+
     conn.commit()
     conn.close()
 
@@ -195,6 +201,109 @@ def save_race_content(slug, content_json):
     updated = result.rowcount > 0
     conn.close()
     return updated
+
+
+def save_gpx_data(slug, gpx_xml):
+    """
+    Save raw GPX XML data for a race, parse it to generate an elevation profile,
+    and compute distance/elevation stats.
+    Returns dict with profile data and stats, or None if race not found.
+    """
+    try:
+        import gpxpy
+    except ImportError:
+        # Fallback if gpxpy not installed — store raw GPX only
+        conn = get_db()
+        result = conn.execute(
+            'UPDATE races SET gpx_data = ?, gpx_available = 1 WHERE slug = ?',
+            (gpx_xml, slug)
+        )
+        conn.commit()
+        updated = result.rowcount > 0
+        conn.close()
+        return {'stored': True, 'profile_generated': False} if updated else None
+
+    gpx = gpxpy.parse(gpx_xml)
+
+    # Extract all elevation points
+    elevations = []
+    points = []
+    for track in gpx.tracks:
+        for segment in track.segments:
+            for point in segment.points:
+                if point.elevation is not None:
+                    points.append(point)
+                    elevations.append(point.elevation)
+
+    if not elevations:
+        return None
+
+    # Convert elevations to feet
+    elevations_ft = [e * 3.28084 for e in elevations]
+
+    # Calculate total distance in miles
+    total_distance_m = 0
+    for i in range(1, len(points)):
+        p1, p2 = points[i-1], points[i]
+        # Haversine
+        R = 6371000
+        lat1, lat2 = math.radians(p1.latitude), math.radians(p2.latitude)
+        dlat = lat2 - lat1
+        dlon = math.radians(p2.longitude - p1.longitude)
+        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+        total_distance_m += R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+    total_distance_mi = total_distance_m * 0.000621371
+
+    # Calculate elevation stats
+    total_gain = 0
+    total_loss = 0
+    for i in range(1, len(elevations_ft)):
+        diff = elevations_ft[i] - elevations_ft[i-1]
+        if diff > 0:
+            total_gain += diff
+        else:
+            total_loss += abs(diff)
+
+    min_elev = min(elevations_ft)
+    max_elev = max(elevations_ft)
+
+    # Downsample to ~200 points for the chart
+    target_points = 200
+    step = max(1, len(elevations_ft) // target_points)
+    profile = [round(elevations_ft[i]) for i in range(0, len(elevations_ft), step)]
+
+    # Store everything
+    conn = get_db()
+    conn.execute('''
+        UPDATE races SET
+            gpx_data = ?,
+            gpx_available = 1,
+            elevation_profile_json = ?,
+            distance_miles = ?,
+            elevation_gain = ?,
+            elevation_gain_ft = ?
+        WHERE slug = ?
+    ''', (
+        gpx_xml,
+        json.dumps(profile),
+        round(total_distance_mi, 1),
+        f"{int(total_gain):,} ft",
+        int(total_gain),
+        slug
+    ))
+    conn.commit()
+    conn.close()
+
+    return {
+        'stored': True,
+        'profile_generated': True,
+        'profile_points': len(profile),
+        'distance_miles': round(total_distance_mi, 1),
+        'elevation_gain_ft': int(total_gain),
+        'elevation_loss_ft': int(total_loss),
+        'min_elevation_ft': int(min_elev),
+        'max_elevation_ft': int(max_elev),
+    }
 
 
 def create_or_update_race(race_data):
