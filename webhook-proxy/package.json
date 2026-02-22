@@ -1,0 +1,14 @@
+{
+  "name": "artlu-webhook-proxy",
+  "version": "1.0.0",
+  "description": "Stripe → OpenClaw webhook proxy for artlu.run premium report generation",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "stripe": "^14.0.0"
+  }
+}
