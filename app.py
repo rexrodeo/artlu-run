@@ -17,6 +17,8 @@ Environment variables (see .env.example):
 
 import os
 import json
+import logging
+import requests
 from dotenv import load_dotenv
 from flask import (Flask, render_template, request, jsonify,
                    redirect, url_for, flash, session)
@@ -38,6 +40,10 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.getenv('FLASK_SECRET_KEY', 'dev-key-change-in-production')
 
+# Configure logging for better debugging
+logging.basicConfig(level=logging.INFO)
+app.logger.setLevel(logging.INFO)
+
 # Stripe configuration
 # Only treat as configured if key looks like a real Stripe key (sk_test_... or sk_live_...)
 _stripe_key = os.getenv('STRIPE_SECRET_KEY', '')
@@ -47,6 +53,10 @@ if STRIPE_CONFIGURED:
 STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY', '')
 STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', '')
 ADMIN_EMAIL = os.getenv('ADMIN_EMAIL', 'vonrexroad@gmail.com')
+
+# OpenClaw configuration for webhook forwarding
+OPENCLAW_GATEWAY_URL = os.getenv('OPENCLAW_GATEWAY_URL', 'http://localhost:18789')
+OPENCLAW_GATEWAY_TOKEN = os.getenv('OPENCLAW_GATEWAY_TOKEN', '')
 
 # Price in cents ($39.00)
 PLAN_PRICE_CENTS = 3900
@@ -65,6 +75,65 @@ def inject_globals():
         'plan_price_cents': PLAN_PRICE_CENTS,
         'current_year': 2026,
     }
+
+
+# ---------------------------------------------------------------------------
+# OpenClaw Integration
+# ---------------------------------------------------------------------------
+
+def forward_purchase_to_openclaw(purchase_data):
+    """
+    Forward purchase data to OpenClaw to trigger race report generation.
+    
+    Args:
+        purchase_data: Dict with purchase metadata from Stripe
+        
+    Returns:
+        bool: True if successfully forwarded, False otherwise
+    """
+    if not OPENCLAW_GATEWAY_TOKEN:
+        app.logger.warning("OPENCLAW_GATEWAY_TOKEN not configured, skipping OpenClaw notification")
+        return False
+    
+    try:
+        # Format the message that will trigger the artlu-race-report skill
+        message = (
+            f"ARTLU_PURCHASE: Generate premium race report for {purchase_data.get('name', 'Unknown')}. "
+            f"Race: {purchase_data.get('race_name', 'Unknown')} ({purchase_data.get('race_slug', 'unknown')}), "
+            f"Goal: {purchase_data.get('goal_time', 'Unknown')}, "
+            f"Location: {purchase_data.get('city', 'Unknown')}, {purchase_data.get('state', 'Unknown')}, "
+            f"Purchase ID: {purchase_data.get('purchase_id', 'Unknown')}, "
+            f"Email: {purchase_data.get('email', 'Unknown')}"
+        )
+        
+        # Send message to OpenClaw main session
+        # Note: This endpoint may need adjustment based on actual OpenClaw Gateway API
+        response = requests.post(
+            f"{OPENCLAW_GATEWAY_URL}/api/message",
+            headers={
+                "Authorization": f"Bearer {OPENCLAW_GATEWAY_TOKEN}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "channel": "main",
+                "message": message
+            },
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            app.logger.info(f"Successfully forwarded purchase to OpenClaw: {purchase_data.get('email')}")
+            return True
+        else:
+            app.logger.error(f"OpenClaw webhook failed: HTTP {response.status_code} - {response.text}")
+            return False
+            
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"Failed to forward purchase to OpenClaw: {e}")
+        return False
+    except Exception as e:
+        app.logger.error(f"Unexpected error forwarding to OpenClaw: {e}")
+        return False
 
 
 # ======================================================================
@@ -254,6 +323,14 @@ def stripe_webhook():
 
         # Notify admin about new order
         send_order_notification(ADMIN_EMAIL, meta)
+
+        # Forward to OpenClaw for race report generation
+        # Get the purchase ID by looking up the purchase we just created
+        purchase = get_purchase_for_race(meta.get('email', ''), race_id)
+        if purchase:
+            purchase_data = dict(meta)  # Copy metadata
+            purchase_data['purchase_id'] = purchase['id']  # Add the database purchase ID
+            forward_purchase_to_openclaw(purchase_data)
 
     return 'Success', 200
 
