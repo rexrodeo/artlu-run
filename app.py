@@ -17,6 +17,7 @@ Environment variables (see .env.example):
 
 import os
 import json
+import time
 import logging
 import requests
 from dotenv import load_dotenv
@@ -106,19 +107,41 @@ def forward_purchase_to_openclaw(purchase_data):
             f"Email: {purchase_data.get('email', 'Unknown')}"
         )
         
-        # Send message to OpenClaw using the sessions API
-        response = requests.post(
-            f"{OPENCLAW_GATEWAY_URL}/api/sessions/send",
-            headers={
-                "Authorization": f"Bearer {OPENCLAW_GATEWAY_TOKEN}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "sessionKey": "agent:main:main",
+        # Send message directly to OpenClaw Gateway WebSocket
+        try:
+            import websocket
+            import json as json_lib
+            
+            # Connect to OpenClaw Gateway WebSocket
+            ws_url = OPENCLAW_GATEWAY_URL.replace('http://', 'ws://').replace('https://', 'wss://')
+            
+            ws = websocket.create_connection(f"{ws_url}/", timeout=10)
+            
+            # Send authentication
+            auth_msg = {
+                "type": "auth",
+                "token": OPENCLAW_GATEWAY_TOKEN
+            }
+            ws.send(json_lib.dumps(auth_msg))
+            
+            # Send the purchase message
+            msg = {
+                "type": "message",
+                "sessionKey": "agent:main:main", 
                 "message": message
-            },
-            timeout=10
-        )
+            }
+            ws.send(json_lib.dumps(msg))
+            
+            # Get response
+            response = ws.recv()
+            ws.close()
+            
+            app.logger.info(f"Successfully sent via WebSocket: {purchase_data.get('email')}")
+            return True
+            
+        except Exception as ws_error:
+            app.logger.error(f"WebSocket connection failed: {ws_error}")
+            return False
         
         if response.status_code == 200:
             app.logger.info(f"Successfully forwarded purchase to OpenClaw: {purchase_data.get('email')}")
