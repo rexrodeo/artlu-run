@@ -106,16 +106,15 @@ def forward_purchase_to_openclaw(purchase_data):
             f"Email: {purchase_data.get('email', 'Unknown')}"
         )
         
-        # Send message to OpenClaw main session
-        # Note: This endpoint may need adjustment based on actual OpenClaw Gateway API
+        # Send message to OpenClaw using the sessions API
         response = requests.post(
-            f"{OPENCLAW_GATEWAY_URL}/api/message",
+            f"{OPENCLAW_GATEWAY_URL}/api/sessions/send",
             headers={
                 "Authorization": f"Bearer {OPENCLAW_GATEWAY_TOKEN}",
                 "Content-Type": "application/json"
             },
             json={
-                "channel": "main",
+                "sessionKey": "agent:main:main",
                 "message": message
             },
             timeout=10
